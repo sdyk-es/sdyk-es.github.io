@@ -1,8 +1,8 @@
 let pieces = [];
-let pawnImg;
-let colours;
 let selected;
-let whiteTurn = true;
+let turnColour = "white";
+let pButtons = [];
+let lastMove = null //[Piece, Origin]
 
 function preload() {
   images = {
@@ -63,6 +63,9 @@ let boardCols = ["#363636", "#F0D9B5", "#B58863"];
 
 function draw() {
   background(boardCols[0]);
+  if (lastMove != null) {
+    // print(lastMove[0].type, lastMove[1][0], lastMove[1][1])
+  }
 
   //Draw board
   noStroke();
@@ -88,6 +91,7 @@ function draw() {
       }
   }
 
+  //Display legal moves for selected piece
   if (selected != null) {
     moves = legalMoves(selected);
 
@@ -104,8 +108,14 @@ function draw() {
       }
     }
   }
+  
+  //Display promotion buttons
+  for (i = 0; i<pButtons.length; i++) {
+    pButtons[i].display()
+  }
 }
 
+//Basic chess piece class
 class Piece {
   constructor(colour, type) {
     this.col = colour;
@@ -136,25 +146,90 @@ function findIndex(item) {
   }
 }
 
+//Runs on mouse click
 function mouseClicked() {
-  if (49 < mouseY && mouseY < 450 && 49 < mouseX && mouseX < 450) {
-    mX = floor(mouseX / 50) - 1;
-    mY = floor(mouseY / 50) - 1;
-    let target = pieces[mY][mX];
-
-    if (selected != null) {
-      if (checkIncludes(legalMoves(selected), [mX, mY])) {
-        selected.hasMoved = true;
-        pos = findIndex(selected);
-        pieces[pos[1]][pos[0]] = null;
-        pieces[mY][mX] = selected;
-        target = null;
+  //If there are promotion options
+  if (pButtons.length > 0) {
+    for (i = 0; i < pButtons.length; i++) {
+      if (dist(mouseX, mouseY, pButtons[i].pos[0], pButtons[i].pos[1])<=30) {
+        pButtons[i].pawn.type = pButtons[i].type
+        pButtons = []
+        break
       }
     }
-    selected = target;
+  } 
+  //Normal control
+  else {
+    if (49 < mouseY && mouseY < 450 && 49 < mouseX && mouseX < 450) {
+      mX = floor(mouseX / 50) - 1;
+      mY = floor(mouseY / 50) - 1;
+      let target = pieces[mY][mX];
+
+      //If a peice is already selected
+      if (selected != null) {
+        //If choice is a legal move
+        if (checkIncludes(legalMoves(selected), [mX, mY])[0]) {
+          
+          //En passant logic
+          if (pieces[mY][mX] == null && 
+              legalMoves(selected)[checkIncludes(legalMoves(selected), 
+                                                 [mX, mY])[1]][2] == 1) {
+            pieces[mY-1 + 2*(selected.col == "white")][mX] = null;
+            print("tried to kill with en passant")
+          }
+          
+          
+          lastMove = [selected, findIndex(selected)];
+          selected.hasMoved = true;
+          pos = findIndex(selected);
+          pieces[pos[1]][pos[0]] = null;
+          pieces[mY][mX] = selected;
+          target = null;
+
+          //Promote pawn
+          if (selected.type == "pawn" && (mY == 0 || mY == 7)) {
+            promote(selected);
+          }
+          
+          selected = null;
+          
+          //Swap turn colour
+          if (turnColour == "white") {
+            turnColour = "black"
+          }
+          else {
+            turnColour = "white"
+          }
+        }
+        //If not a legal move
+        else {
+          //If empty tile
+          if (target == null){
+            selected = null
+          }
+          //If friendly piece
+          else if (target.col == turnColour)
+            selected = target
+          //If enemy piece
+          else{
+            selected = null
+          }
+        }
+      }
+      
+      //If a piece is not already selected
+      else if (target != null){
+        //If target is friendly piece
+        if (target.col == turnColour) {
+          selected = target;
+        }
+      }
+      
+    }
   }
 }
 
+//Return the legal moves a piece can make
 function legalMoves(piece) {
   pos = findIndex(piece);
   moves = [];
@@ -179,7 +254,7 @@ function legalMoves(piece) {
     for (let i = -1; i < 2; i = i + 2) {
       let m = [pos[0] + i, pos[1] + dir];
       if (-1 < m[0] && m[0] < 8 && -1 < m[1] && m[1] < 8) {
-        if (pieces[m[1]][m[0]] != null && pieces[m[1]][m[0]].col != piece.col) {
+        if ((pieces[m[1]][m[0]] != null && pieces[m[1]][m[0]].col != piece.col) || enPassantCheck([m[0],m[1]],piece.col)) {
           moves.push([m[0], m[1], 1]);
         }
       }
@@ -294,7 +369,7 @@ function legalMoves(piece) {
       [1, 0],
       [0, 1],
       [-1, 0],
-      [0, -1]
+      [0, -1],
     ];
     for (let i = 0; i < a.length; i++) {
       let m = a[i][0];
@@ -334,7 +409,7 @@ function legalMoves(piece) {
       [1, 0],
       [0, 1],
       [-1, 0],
-      [0, -1]
+      [0, -1],
     ];
     for (let i = 0; i < a.length; i++) {
       let m = a[i][0];
@@ -364,6 +439,26 @@ function legalMoves(piece) {
   return moves;
 }
 
+//Check if en passant is legal for a given position
+function enPassantCheck(pos, friendlyCol) {
+  if (lastMove != null){
+    // print("Last moved piece colour: " + lastMove[0].col)
+    if (lastMove[0].col != friendlyCol && lastMove[0].type == "pawn"){
+      // print("last move was an enemy pawn")
+      // print(lastMove[1][1], findIndex(lastMove[0])[1])
+      if (abs(lastMove[1][1] - findIndex(lastMove[0])[1]) == 2) {
+        // print("last move was a double")
+        if (pos[1] == min(lastMove[1][1], findIndex(lastMove[0])[1]) + 1 &&
+            pos[0] == lastMove[1][0]) {
+          return true     
+        }
+      }
+    }
+  }
+  // print(false)
+  return false
+}
+  
 //Check if array is within a 2D array - only works with legal moves array lol
 function checkIncludes(array, item) {
   for (let i = 0; i < array.length; i++) {
@@ -372,9 +467,52 @@ function checkIncludes(array, item) {
         break;
       }
       if (j == 1) {
-        return true;
+        return [true,i];
       }
     }
   }
   return false;
+}
+
+//Pawn promotion
+function promote(pawn) {
+  let options = [
+    ["queen", [0, -1]],
+    ["rook", [1, 0]],
+    ["bishop", [0, 1]],
+    ["knight", [-1, 0]],
+  ];
+
+  let pawnPos = findIndex(pawn);
+
+  for (let i = 0; i < options.length; i++) {
+    let relPos = options[i][1];
+    pButtons.push(
+      new PromoButton(options[i][0],
+                      [pawnPos[0] + relPos[0], pawnPos[1] + relPos[1]],
+                      pawn.col, pawn)
+    );
+  }
+}
+
+class PromoButton {
+  constructor(promotionType, boardPos, colour, pawn) {
+    this.type = promotionType;
+    this.pos = [50 * boardPos[0] + 75, 50 * boardPos[1] + 75,];
+    this.col = colour
+    this.pawn = pawn
+  }
+  display() {
+    noStroke()
+    stroke("#5A5A5AA5")
+    strokeWeight(7.5)
+    fill("#5A5A5A")
+    circle(this.pos[0], this.pos[1], 60)
+    image(
+      images[this.type + this.col],
+      this.pos[0]-20,
+      this.pos[1]-20,
+      40, 40
+    )
+  }
 }
