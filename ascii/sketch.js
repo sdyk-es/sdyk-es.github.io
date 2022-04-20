@@ -32,7 +32,7 @@ function draw() {
       fill(rgb)
       
       text(charArray[i][j],i*CHAR_W, j*CHAR_H)
-      colArray[i][j][2] = constrain(colArray[i][j][2]+random(-3,3),50,100)
+      colArray[i][j][2] = constrain(colArray[i][j][2]+random(-5,5),50,100)
     }
   }
 }
