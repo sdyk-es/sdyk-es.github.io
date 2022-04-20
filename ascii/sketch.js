@@ -1,8 +1,8 @@
 //#cf1332
 
 //CONSTANTS
-let CANVAS_W = window.innerWidth;
-let CANVAS_H = window.innerHeight;
+// let CANVAS_W = window.innerWidth;
+// let CANVAS_H = window.innerHeight;
 let CHAR_W = 20;
 let CHAR_H = CHAR_W;
 
@@ -12,8 +12,8 @@ let colArray = [];
 
 
 function setup() {
-  createCanvas(CANVAS_W, CANVAS_H);
-  generateArrays(CANVAS_W/CHAR_W, CANVAS_H/CHAR_H)
+  createCanvas(window.innerWidth, window.innerHeight);
+  generateArrays(window.innerWidth/CHAR_W, window.innerHeight/CHAR_H)
 }
 
 function draw() {
@@ -32,13 +32,14 @@ function draw() {
       fill(rgb)
       
       text(charArray[i][j],i*CHAR_W, j*CHAR_H)
-      colArray[i][j][2] = constrain(colArray[i][j][2]+random(-5,5),50,100)
+      colArray[i][j][2] = constrain(colArray[i][j][2]+random(-3,3),50,100)
     }
   }
 }
 
 function generateArrays(width, height){
   //Generate charArray
+  charArray = []
   for (i = 0; i<width; i++) {
     charArray.push([])
     for (j = 0; j<height; j++) {
@@ -46,6 +47,7 @@ function generateArrays(width, height){
     }
   }
   //Generate colArray
+  colArray = []
   for (i = 0; i<width; i++) {
     colArray.push([])
     for (j = 0; j<height; j++) {
@@ -65,4 +67,9 @@ const HSBToRGB = (h, s, b) => {
   const k = (n) => (n + h / 60) % 6;
   const f = (n) => b * (1 - s * Math.max(0, Math.min(k(n), 4 - k(n), 1)));
   return [255 * f(5), 255 * f(3), 255 * f(1)];
+}
+
+function windowResized() {
+  resizeCanvas(window.innerWidth, window.innerHeight)
+  generateArrays(window.innerWidth/CHAR_W, window.innerHeight/CHAR_H)
 }
